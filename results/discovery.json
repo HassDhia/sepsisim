@@ -1,0 +1,52 @@
+{
+  "domain": "sepsis_management",
+  "env_name": "sepsisim",
+  "version": "0.1.0",
+  "title": "SepsiSim: Gymnasium Environments for Reinforcement Learning in Sepsis Management",
+  "gap_analysis": {
+    "existing_packages": [
+      {
+        "name": "icu-sepsis",
+        "approach": "Tabular MDP from discretized MIMIC-III data",
+        "limitations": "Discrete states/actions, no physiological dynamics, static transition matrix"
+      }
+    ],
+    "gap_filled": "Continuous-state ODE-based physiological simulation with 3 graduated environments",
+    "novelty": [
+      "First Gymnasium-compatible continuous-state sepsis RL environments",
+      "ODE-based inflammation dynamics (Reynolds et al. 2006)",
+      "Multi-system integration: inflammation + cardiovascular + lactate + SOFA",
+      "Three graduated environments for curriculum learning",
+      "Three difficulty tiers per environment (easy/medium/hard)"
+    ]
+  },
+  "environments": {
+    "FluidResuscitation-v0": {
+      "obs_dim": 7,
+      "action_dim": 1,
+      "action_type": "continuous",
+      "challenge": "Restore MAP while avoiding fluid overload"
+    },
+    "VasopressorTitration-v0": {
+      "obs_dim": 8,
+      "action_dim": 1,
+      "action_type": "continuous",
+      "challenge": "Maintain MAP without excessive vasoconstriction"
+    },
+    "SepsisManagement-v0": {
+      "obs_dim": 10,
+      "action_dim": 3,
+      "action_type": "continuous",
+      "challenge": "Balance fluids, vasopressors, and antibiotic timing"
+    }
+  },
+  "physiological_models": {
+    "inflammation": "Reynolds et al. 2006 - 4-ODE system (bacteria, pro-inflammatory, anti-inflammatory, tissue damage)",
+    "cardiovascular": "Lumped-parameter hemodynamic model with Frank-Starling saturation",
+    "lactate": "Single-compartment production-clearance kinetics",
+    "sofa": "Simplified 3-component scoring (cardiovascular, renal, metabolic)"
+  },
+  "author": "Hass Dhia",
+  "institution": "Smart Technology Investments Research Institute",
+  "date": "2026-03-24"
+}

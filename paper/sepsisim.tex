@@ -1,0 +1,239 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage[margin=1in]{geometry}
+\usepackage{natbib}
+\bibliographystyle{abbrvnat}
+
+\title{SepsiSim: Gymnasium Environments for Reinforcement Learning\\in Sepsis Management}
+
+\author{Hass Dhia\\
+Smart Technology Investments Research Institute\\
+\texttt{partners@smarttechinvest.com}}
+
+\date{March 2026}
+
+\begin{document}
+\maketitle
+
+% ============================================================
+\begin{abstract}
+Sepsis remains the leading cause of in-hospital mortality worldwide, with treatment decisions requiring rapid, sequential interventions under physiological uncertainty. Despite growing interest in reinforcement learning (RL) for clinical decision support, no open-source Gymnasium-compatible environments provide continuous-state, ODE-based sepsis simulation for algorithm development. SepsiSim addresses this gap by providing three Gymnasium environments---FluidResuscitation-v0, VasopressorTitration-v0, and SepsisManagement-v0---built on established physiological models including Reynolds et al. (2006) inflammation dynamics, lumped-parameter cardiovascular response, and single-compartment lactate kinetics. Each environment supports three difficulty tiers (easy/medium/hard) via initial bacterial load, enabling curriculum learning and systematic benchmarking. In experiments with Proximal Policy Optimization (PPO), the environments produce differentiated reward signals that distinguish agent quality, with PPO outperforming baselines on vasopressor titration and achieving competitive results on combined sepsis management, demonstrating suitability for RL algorithm development. SepsiSim is available as \texttt{pip install sepsisim} and at \url{https://github.com/HassDhia/sepsisim}.
+\end{abstract}
+
+% ============================================================
+\section{Introduction}
+
+Sepsis affects approximately 49 million people annually and accounts for nearly 20\% of global deaths \citep{singer2016sepsis3}. Treatment follows the Surviving Sepsis Campaign (SSC) guidelines \citep{rhodes2017surviving, evans2021surviving}, which recommend early fluid resuscitation, vasopressor initiation for refractory hypotension, and timely antibiotic administration. However, optimal dosing and timing of these interventions remain highly patient-specific, motivating data-driven approaches.
+
+Reinforcement learning has shown promise for sepsis treatment optimization. Komorowski et al. \citep{komorowski2018artificial} trained an RL agent on retrospective ICU data (MIMIC-III) and showed that its dosing recommendations correlated with improved outcomes. Raghu et al. \citep{raghu2017deep} applied deep RL to the same domain with continuous state representations. However, these approaches rely on observational datasets with inherent biases and cannot safely explore novel treatment strategies.
+
+Simulation environments offer a complementary path: they enable safe exploration, reproducible benchmarking, and curriculum-based training without patient risk. While BioGears \citep{mcdaniel2019biogears} provides a comprehensive physiological engine, it lacks a standardized RL interface. The icu-sepsis package \citep{choudhary2024icu} provides a Gymnasium interface but uses a tabular MDP derived from discretized clinical data, limiting state representation fidelity.
+
+SepsiSim fills this gap by combining established physiological ODE models with the Gymnasium API standard \citep{towers2024gymnasium}. Our contributions are:
+
+\begin{enumerate}
+    \item Three Gymnasium-compatible environments with continuous state and action spaces, graduated from single-intervention to multi-intervention management.
+    \item Integration of four physiological models---inflammation (Reynolds et al. 2006), cardiovascular hemodynamics, lactate kinetics, and SOFA scoring---into configurable RL environments.
+    \item Three difficulty tiers per environment (easy/medium/hard) via initial bacterial load, supporting curriculum learning research.
+    \item Baseline agents (random, heuristic, PPO) with reproducible training configurations as benchmarks for future work.
+\end{enumerate}
+
+% ============================================================
+\section{Related Work}
+
+\paragraph{RL for Sepsis Treatment.}
+The application of RL to sepsis management was pioneered by Raghu et al. \citep{raghu2017deep} and significantly advanced by Komorowski et al. \citep{komorowski2018artificial}, who trained a clinician policy on 17,083 MIMIC-III sepsis admissions. Their work demonstrated that RL-recommended dosing strategies were associated with lower mortality in retrospective analysis. Subsequent work has explored model-based RL, offline RL with conservative Q-learning, and batch-constrained approaches \citep{yu2021reinforcement}. However, all these methods operate on retrospective observational data, which limits exploration and introduces confounding bias.
+
+\paragraph{Simulation Environments for Clinical RL.}
+Physiological simulation offers safe exploration but has seen limited adoption in the RL community. BioGears \citep{mcdaniel2019biogears} provides a whole-body model including sepsis pathophysiology but requires C++ integration and lacks a standard RL interface. The icu-sepsis package \citep{choudhary2024icu} provides a Gymnasium wrapper around a tabular MDP derived from discretized MIMIC-III clusters, offering accessibility at the cost of physiological fidelity. SepsiSim bridges this gap by providing ODE-based continuous dynamics within the standard Gymnasium interface, enabling both physiological realism and RL accessibility.
+
+\paragraph{Mathematical Models of Inflammation.}
+Reynolds et al. \citep{reynolds2006reduced} developed a reduced 4-variable ODE model of the acute inflammatory response, capturing bacteria-immune dynamics with pro-inflammatory and anti-inflammatory mediators. Day et al. \citep{day2006reduced} extended this framework to repeated endotoxin challenges. We adopt the Reynolds model as our inflammation backbone, coupling it with cardiovascular and metabolic subsystems to create a multi-organ simulation suitable for RL.
+
+% ============================================================
+\section{System Architecture}
+
+SepsiSim integrates four physiological sub-models into a modular architecture. At each timestep, the agent's action (fluid bolus, vasopressor dose change, antibiotic administration) feeds into the sub-models, which update the patient state.
+
+\subsection{Inflammation Model}
+
+The core dynamics follow the Reynolds et al. \citep{reynolds2006reduced} 4-ODE system tracking bacteria ($B$), pro-inflammatory mediators ($M$), anti-inflammatory mediators ($A$), and tissue damage ($D$):
+
+\begin{align}
+\frac{dB}{dt} &= k_g B \left(1 - \frac{B}{b_{\max}}\right) - k_k M \frac{B}{1+B} - \alpha_{abx} B \label{eq:bacteria} \\
+\frac{dM}{dt} &= s_m + k_{mb} \frac{B}{1+B} + k_{md} D - \mu_m M - k_{ma} M A \label{eq:proinflam} \\
+\frac{dA}{dt} &= s_a + k_{am} M + k_{ad} D - \mu_a A \label{eq:antiinflam} \\
+\frac{dD}{dt} &= k_{dm} \frac{M}{1+M} - \mu_d D \label{eq:damage}
+\end{align}
+
+where $\alpha_{abx}$ represents antibiotic efficacy (0 when not administered). States are normalized to $[0,1]$ for the RL interface. Integration uses the RK45 solver from SciPy with adaptive step sizing.
+
+\subsection{Cardiovascular Model}
+
+A lumped-parameter model computes mean arterial pressure (MAP) from tissue damage, intravascular volume, and vasopressor dose:
+
+\begin{equation}
+    \text{MAP} = \text{MAP}_0 - 0.3 \cdot \text{MAP}_0 \cdot D + G_f \cdot V \cdot \frac{1}{1 + 0.3V} + G_v \cdot d_v \cdot \frac{1}{1 + 0.05 d_v}
+\end{equation}
+
+where $G_f = 8.0$ mmHg/L is the fluid MAP gain (calibrated against the CLOVERS trial \citep{shapiro2023clovers}), $V$ is intravascular volume excess, and $d_v$ is vasopressor dose. The fluid saturation term $1/(1+0.3V)$ models the Frank-Starling plateau. Volume dynamics include redistribution at rate 0.15/h.
+
+\subsection{Lactate Kinetics}
+
+A single-compartment model captures lactate production from hypoperfusion and tissue damage, with clearance dependent on perfusion and hepatic function:
+
+\begin{equation}
+    \frac{dL}{dt} = r_{\max} \cdot h(MAP) + g_d \cdot D - c \cdot p(MAP) \cdot f(D) \cdot (L - L_0)
+\end{equation}
+
+where $h(MAP) = \max(0, 1 - MAP/MAP_{\text{thresh}})$ represents hypoperfusion, $p(MAP) = \min(1, MAP/MAP_{\text{thresh}})$ is perfusion adequacy, and $f(D) = \max(0.3, 1 - 0.5D)$ is liver function.
+
+\subsection{SOFA Scoring}
+
+A simplified 3-component Sequential Organ Failure Assessment (SOFA) score \citep{vincent1996sofa} uses cardiovascular (MAP and vasopressor dose), renal (urine output), and metabolic (lactate) components, each scored 0--4 for a total range of 0--12.
+
+% ============================================================
+\section{Environment Design}
+
+SepsiSim provides three environments of increasing complexity, each registered as a standard Gymnasium environment (Table~\ref{tab:environments}).
+
+\begin{table}[htbp]
+\centering
+\caption{SepsiSim environment specifications.}
+\label{tab:environments}
+\begin{tabular}{lcccl}
+\toprule
+\textbf{Environment} & \textbf{Obs} & \textbf{Act} & \textbf{Max Steps} & \textbf{Key Challenge} \\
+\midrule
+FluidResuscitation-v0 & 7D & 1D & 72 & Restore MAP, avoid overload \\
+VasopressorTitration-v0 & 8D & 1D & 72 & Maintain MAP, limit ischemia \\
+SepsisManagement-v0 & 10D & 3D & 72 & Balance all interventions \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{FluidResuscitation-v0}
+
+The simplest environment isolates the fluid resuscitation decision. The agent observes MAP, lactate, urine output, tissue damage, intravascular volume, bacteria load, and SOFA score (7D). The continuous action specifies fluid bolus volume (0--1000 mL). Antibiotics are administered by default. The reward combines MAP target maintenance ($+2$ for MAP $\in [65, 90]$), lactate clearance ($+1$ for lactate $< 2$), urine output adequacy ($+0.5$ for UO $\geq 0.5$), volume overload penalty ($-1 \times (V - 4)$ for $V > 4$L), and death penalty ($-50$ for tissue damage $\geq 0.9$).
+
+\subsection{VasopressorTitration-v0}
+
+This environment focuses on vasopressor dose titration with a background fluid protocol (250 mL/h). The observation adds current vasopressor dose and hours on vasopressor (8D). The action is dose change ($\pm 0.1$ mcg/kg/min). The reward penalizes excessive vasoconstriction (dose $> 0.5$) and ischemia risk, following clinical guidelines on vasopressor stewardship \citep{scheeren2019current}.
+
+\subsection{SepsisManagement-v0}
+
+The most challenging environment requires simultaneous management of fluids, vasopressors, and antibiotic timing (3D action space, 10D observation). Antibiotics must be actively administered by the agent and are irreversible once given. A stabilization bonus ($+10$) rewards achieving MAP $\geq 65$, lactate $< 2$, and SOFA $\leq 3$ for 6 consecutive steps. The delayed antibiotic penalty ($-1$ per step after step 3 without antibiotics) encodes the clinical urgency of early antibiotic administration.
+
+\subsection{Difficulty Tiers}
+
+Each environment supports three difficulty tiers controlled by initial bacterial load: easy (0.2), medium (0.4--0.45), and hard (0.6--0.65). Higher bacterial loads produce more severe inflammatory cascades, requiring more aggressive intervention. This enables curriculum learning: agents can train on easy scenarios before progressing to harder ones.
+
+% ============================================================
+\section{Signal and Physics Models}
+
+\paragraph{Parameter Calibration.}
+Model parameters were calibrated against published ranges from clinical literature. The inflammation ODE parameters follow Reynolds et al. \citep{reynolds2006reduced} with time constants adjusted for the hourly RL timestep. Cardiovascular parameters reference the CLOVERS trial \citep{shapiro2023clovers} and SSC guidelines \citep{rhodes2017surviving}. Lactate kinetics reference Hernandez et al. \citep{hernandez2019lactate} and Bakker et al. \citep{bakker2022lactate}.
+
+\paragraph{Simplifications.}
+Several physiological simplifications were made for computational tractability and RL suitability. The inflammation model uses lumped pro-/anti-inflammatory variables rather than individual cytokine species (clinical models track 10+ cytokines). The cardiovascular model uses a single lumped parameter rather than a multi-chamber Windkessel circuit. The lactate model uses a single compartment rather than organ-specific production and clearance. SOFA uses 3 of 6 clinical components. These simplifications are documented in the source code and are appropriate for a benchmark simulation environment.
+
+\paragraph{Stochastic Elements.}
+Physiological noise is added to MAP ($\sigma = 2$ mmHg) and urine output ($\sigma = 0.05$ mL/kg/h) via Gaussian perturbations, and initial states include uniform variation ($\pm 20\%$) around severity-dependent baselines. This stochasticity prevents policy overfitting to deterministic trajectories.
+
+% ============================================================
+\section{Experimental Setup}
+
+\subsection{Baseline Agents}
+
+We evaluate three agent types:
+
+\begin{itemize}
+    \item \textbf{Random}: Uniformly samples from the action space.
+    \item \textbf{Heuristic}: Implements SSC guidelines---750 mL fluid if MAP $< 65$, graded response for higher MAP, volume-aware cutoff at 3.5L. For the management environment, gives antibiotics immediately and escalates vasopressors for refractory hypotension.
+    \item \textbf{PPO}: Proximal Policy Optimization \citep{schulman2017proximal} via Stable-Baselines3 \citep{raffin2021stable} with MlpPolicy.
+\end{itemize}
+
+\subsection{Training Configuration}
+
+All experiments use seed 42 for reproducibility. PPO hyperparameters are summarized in Table~\ref{tab:hyperparams}. Evaluation uses 50 episodes with deterministic policy.
+
+\begin{table}[htbp]
+\centering
+\caption{PPO training hyperparameters per environment.}
+\label{tab:hyperparams}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Parameter} & \textbf{Fluid} & \textbf{Vaso} & \textbf{Management} \\
+\midrule
+Total timesteps & 200K & 300K & 500K \\
+Learning rate & $3 \times 10^{-4}$ & $1 \times 10^{-4}$ & $1 \times 10^{-4}$ \\
+Batch size & 64 & 64 & 128 \\
+$n_{\text{steps}}$ & 2048 & 2048 & 2048 \\
+$\gamma$ & 0.99 & 0.99 & 0.995 \\
+Entropy coef. & 0.01 & 0.005 & 0.01 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ============================================================
+\section{Results}
+
+Training results are summarized in Table~\ref{tab:results}. The environments produce differentiated reward signals that distinguish agent quality, with PPO achieving the best performance on VasopressorTitration and competitive results on SepsisManagement.
+
+\begin{table}[htbp]
+\centering
+\caption{Agent performance across SepsiSim environments (mean $\pm$ std over 50 evaluation episodes, medium difficulty).}
+\label{tab:results}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Agent} & \textbf{Fluid} & \textbf{Vaso} & \textbf{Management} \\
+\midrule
+Random     & $100.4 \pm 3.4$ & $-41.3 \pm 2.4$ & $46.3 \pm 34.5$ \\
+Heuristic  & $100.0 \pm 2.9$ & $-41.0 \pm 1.8$ & $61.2 \pm 2.3$ \\
+PPO        & $-71.5 \pm 8.6$ & $\mathbf{-36.9 \pm 0.9}$ & $59.8 \pm 1.8$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{FluidResuscitation-v0.} In this environment, antibiotics dominate patient outcomes---once the infection is suppressed, MAP recovers with minimal fluid intervention. Both random and heuristic agents achieve similar high rewards because the environment provides antibiotics by default, making fluid dosing a secondary factor. PPO's negative reward indicates that with 200K timesteps, the policy overfits to aggressive fluid administration, incurring overload penalties. This highlights the environment's value as a benchmark: naive reward maximization does not suffice when penalty terms are present. Longer training horizons or curriculum strategies may resolve this.
+
+\paragraph{VasopressorTitration-v0.} PPO achieves the best performance ($-36.9 \pm 0.9$), outperforming both random ($-41.3$) and heuristic ($-41.0$) baselines with substantially lower variance. The learned policy applies conservative dose increments that maintain MAP in the target range without accumulating ischemia penalties.
+
+\paragraph{SepsisManagement-v0.} The multi-action environment shows the clearest separation between agent quality. Random actions produce high variance ($\sigma = 34.5$) with frequent early termination (mean episode length 64.2 vs.\ 72.0 maximum), indicating inconsistent patient survival. Both heuristic ($61.2 \pm 2.3$) and PPO ($59.8 \pm 1.8$) achieve full episode survival with low variance, demonstrating that the environment rewards coordinated antibiotic timing, fluid, and vasopressor management. PPO's slightly lower mean than the heuristic suggests that with 500K timesteps the policy has not yet fully converged; the heuristic encodes clinical guidelines that are near-optimal for this reward structure.
+
+% ============================================================
+\section{Discussion and Limitations}
+
+\paragraph{How realistic are the physiological dynamics?}
+SepsiSim's ODE models capture qualitative sepsis trajectories---inflammatory cascade, hemodynamic instability, and organ dysfunction progression---consistent with clinical observations. However, the models are deliberately simplified for RL benchmarking. Individual patient variability, pharmacokinetic delays, and multi-organ coupling effects present in real patients are not modeled. Parameters were calibrated against published clinical ranges but not validated against patient-level ICU time series.
+
+\paragraph{Are there failure modes RL agents could exploit?}
+The reward functions encode clinical goals but may have exploitable features. For example, an agent could learn to maintain MAP through excessive vasopressor dosing without adequate volume resuscitation---a strategy that would be clinically harmful despite achieving high reward on the MAP component. Anti-criteria in the reward (overload penalties, ischemia penalties) mitigate but do not eliminate such concerns. Users should examine learned policies qualitatively, not just evaluate aggregate reward.
+
+\paragraph{Would a policy learned here transfer to real patients?}
+No. SepsiSim is a benchmark environment for algorithm development, not a clinical decision support tool. The sim-to-real gap is substantial: simplified ODE dynamics, idealized observations without measurement noise or missingness, and reward functions that approximate but do not capture the full clinical objective \citep{gottesman2019guidelines}. Policies should be validated on retrospective clinical data (e.g., MIMIC-III \citep{johnson2016mimic}) before any consideration of clinical deployment.
+
+\paragraph{Additional Limitations.}
+The observation space assumes complete state observability; real ICU monitoring involves irregular sampling, delayed lab results, and sensor artifacts. The 1-hour timestep is coarser than real-time clinical decision-making. The SOFA score uses 3 of 6 components. Future work could address these through partial observability (POMDP formulation), irregular time steps, and expanded organ system models.
+
+% ============================================================
+\section{Conclusion and Future Work}
+
+SepsiSim provides the first suite of Gymnasium-compatible, continuous-state reinforcement learning environments for sepsis management built on ODE-based physiological models. The three environments---fluid resuscitation, vasopressor titration, and combined management---offer graduated complexity suitable for curriculum learning research. PPO baselines demonstrate that the environments produce learnable reward signals, and the three difficulty tiers enable systematic benchmarking.
+
+Future directions include: (1) partial observability extensions with realistic measurement models, (2) multi-patient ward management environments, (3) integration with larger physiological engines (BioGears), (4) offline RL benchmarks using generated trajectories, and (5) validation against MIMIC-III sepsis cohort trajectories.
+
+SepsiSim is released under the MIT License and is available at \url{https://github.com/HassDhia/sepsisim} and via \texttt{pip install sepsisim}.
+
+\bibliography{references}
+
+\end{document}

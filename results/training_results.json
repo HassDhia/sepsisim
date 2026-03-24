@@ -1,0 +1,113 @@
+{
+  "FluidResuscitation-v0": {
+    "random": {
+      "mean_reward": 100.40084326775828,
+      "std_reward": 3.427676684212696,
+      "mean_length": 72.0,
+      "std_length": 0.0,
+      "min_reward": 88.8630726972499,
+      "max_reward": 105.78191390721449,
+      "n_episodes": 50
+    },
+    "heuristic": {
+      "mean_reward": 100.0221781721683,
+      "std_reward": 2.9217528901367604,
+      "mean_length": 72.0,
+      "std_length": 0.0,
+      "min_reward": 92.15006694037059,
+      "max_reward": 105.78191390721449,
+      "n_episodes": 50
+    },
+    "ppo": {
+      "env_id": "sepsisim/FluidResuscitation-v0",
+      "mean_reward": -71.54390391949931,
+      "std_reward": 8.61546319893136,
+      "mean_length": 72.0,
+      "min_reward": -94.17387197188606,
+      "max_reward": -50.96403305982553,
+      "total_timesteps": 200000,
+      "seed": 42
+    },
+    "ppo_vs_random_ratio": 1.713,
+    "training_config": {
+      "total_timesteps": 200000,
+      "learning_rate": 0.0003,
+      "batch_size": 64,
+      "seed": 42
+    }
+  },
+  "VasopressorTitration-v0": {
+    "random": {
+      "mean_reward": -41.318342726467115,
+      "std_reward": 2.4478094754459274,
+      "mean_length": 7.14,
+      "std_length": 0.34698703145794946,
+      "min_reward": -46.54091396808967,
+      "max_reward": -34.7377973215425,
+      "n_episodes": 50
+    },
+    "heuristic": {
+      "mean_reward": -40.97041632526595,
+      "std_reward": 1.7570495496687506,
+      "mean_length": 7.14,
+      "std_length": 0.34698703145794946,
+      "min_reward": -44.082885343081244,
+      "max_reward": -34.7377973215425,
+      "n_episodes": 50
+    },
+    "ppo": {
+      "env_id": "sepsisim/VasopressorTitration-v0",
+      "mean_reward": -36.91445569730412,
+      "std_reward": 0.875391327687023,
+      "mean_length": 7.18,
+      "min_reward": -37.694720214593275,
+      "max_reward": -33.88505339105866,
+      "total_timesteps": 300000,
+      "seed": 42
+    },
+    "ppo_vs_random_ratio": 0.107,
+    "training_config": {
+      "total_timesteps": 300000,
+      "learning_rate": 0.0001,
+      "batch_size": 64,
+      "seed": 42
+    }
+  },
+  "SepsisManagement-v0": {
+    "random": {
+      "mean_reward": 46.29928971257178,
+      "std_reward": 34.48610575642988,
+      "mean_length": 64.24,
+      "std_length": 21.014813822634736,
+      "min_reward": -48.54662629275023,
+      "max_reward": 65.62597167520096,
+      "n_episodes": 50
+    },
+    "heuristic": {
+      "mean_reward": 61.21636076491121,
+      "std_reward": 2.3250643436924716,
+      "mean_length": 72.0,
+      "std_length": 0.0,
+      "min_reward": 56.58277810529614,
+      "max_reward": 66.32798495891323,
+      "n_episodes": 50
+    },
+    "ppo": {
+      "env_id": "sepsisim/SepsisManagement-v0",
+      "mean_reward": 59.77536569826371,
+      "std_reward": 1.8111469846508315,
+      "mean_length": 72.0,
+      "min_reward": 56.34383301749014,
+      "max_reward": 63.49569972025388,
+      "total_timesteps": 500000,
+      "seed": 42
+    },
+    "ppo_vs_random_ratio": 0.291,
+    "training_config": {
+      "total_timesteps": 500000,
+      "learning_rate": 0.0001,
+      "batch_size": 128,
+      "seed": 42
+    }
+  }
+}
