@@ -66,7 +66,7 @@ def train_ppo(env_id: str, config: dict | None = None) -> dict:
     rewards = []
     lengths = []
     for ep in range(50):
-        obs, _ = eval_env.reset(seed=ep + 1000)
+        obs, _ = eval_env.reset(seed=ep)
         total_reward = 0.0
         steps = 0
         done = False

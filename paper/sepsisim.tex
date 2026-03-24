@@ -127,11 +127,11 @@ The simplest environment isolates the fluid resuscitation decision. The agent ob
 
 \subsection{VasopressorTitration-v0}
 
-This environment focuses on vasopressor dose titration with a background fluid protocol (250 mL/h). The observation adds current vasopressor dose and hours on vasopressor (8D). The action is dose change ($\pm 0.1$ mcg/kg/min). The reward penalizes excessive vasoconstriction (dose $> 0.5$) and ischemia risk, following clinical guidelines on vasopressor stewardship \citep{scheeren2019current}.
+This environment focuses on vasopressor dose titration with a background fluid protocol (250 mL/h). The observation adds current vasopressor dose and hours on vasopressor (8D). The action is dose change ($\pm 0.1$ mcg/kg/min). The reward penalizes excessive vasoconstriction (dose $> 0.5$) and ischemia risk, following clinical guidelines on vasopressor stewardship \citep{scheeren2019current}. Despite background antibiotics and fluids, the inflammatory cascade at medium severity typically causes tissue damage termination within 7--10 steps, making this a short-horizon control problem.
 
 \subsection{SepsisManagement-v0}
 
-The most challenging environment requires simultaneous management of fluids, vasopressors, and antibiotic timing (3D action space, 10D observation). Antibiotics must be actively administered by the agent and are irreversible once given. A stabilization bonus ($+10$) rewards achieving MAP $\geq 65$, lactate $< 2$, and SOFA $\leq 3$ for 6 consecutive steps. The delayed antibiotic penalty ($-1$ per step after step 3 without antibiotics) encodes the clinical urgency of early antibiotic administration.
+The most challenging environment requires simultaneous management of fluids, vasopressors, and antibiotic timing (3D action space, 10D observation). Antibiotics must be actively administered by the agent and are irreversible once given. A stabilization bonus ($+10$) rewards achieving MAP $\geq 65$, lactate $< 2$, and SOFA $\leq 3$ after at least 6 elapsed steps. The delayed antibiotic penalty ($-1$ per step after step 3 without antibiotics) encodes the clinical urgency of early antibiotic administration.
 
 \subsection{Difficulty Tiers}
 
@@ -164,7 +164,7 @@ We evaluate three agent types:
 
 \subsection{Training Configuration}
 
-All experiments use seed 42 for reproducibility. PPO hyperparameters are summarized in Table~\ref{tab:hyperparams}. Evaluation uses 50 episodes with deterministic policy.
+All experiments use seed 42 for reproducibility. PPO hyperparameters are summarized in Table~\ref{tab:hyperparams}. Evaluation uses 50 episodes with deterministic policy. Each episode uses a per-episode seed (\texttt{seed=ep}) for environment reset, ensuring all agents face identical initial conditions across the evaluation set.
 
 \begin{table}[htbp]
 \centering
@@ -206,9 +206,9 @@ PPO        & $-71.5 \pm 8.6$ & $\mathbf{-36.9 \pm 0.9}$ & $59.8 \pm 1.8$ \\
 
 \paragraph{FluidResuscitation-v0.} In this environment, antibiotics dominate patient outcomes---once the infection is suppressed, MAP recovers with minimal fluid intervention. Both random and heuristic agents achieve similar high rewards because the environment provides antibiotics by default, making fluid dosing a secondary factor. PPO's negative reward indicates that with 200K timesteps, the policy converges to an overly aggressive fluid administration strategy, incurring overload penalties. This highlights the environment's value as a benchmark: naive reward maximization does not suffice when penalty terms are present. Longer training horizons or curriculum strategies may resolve this.
 
-\paragraph{VasopressorTitration-v0.} PPO achieves the best performance ($-36.9 \pm 0.9$), outperforming both random ($-41.3$) and heuristic ($-41.0$) baselines with substantially lower variance. The learned policy applies conservative dose increments that maintain MAP in the target range without accumulating ischemia penalties.
+\paragraph{VasopressorTitration-v0.} PPO achieves the best performance ($-36.9 \pm 0.9$), outperforming both random ($-41.3$) and heuristic ($-41.0$) baselines with substantially lower variance. Episodes terminate early (mean 7.1 steps of 72 maximum) due to rapid tissue damage accumulation despite background antibiotics and fluids, making this a short-horizon control problem. Within this constrained window, the learned policy applies conservative dose increments that maintain MAP in the target range without accumulating ischemia penalties.
 
-\paragraph{SepsisManagement-v0.} The multi-action environment shows the clearest separation between agent quality. Random actions produce high variance ($\sigma = 34.5$) with frequent early termination (mean episode length 64.2 vs.\ 72.0 maximum), indicating inconsistent patient survival. Both heuristic ($61.2 \pm 2.3$) and PPO ($59.8 \pm 1.8$) achieve full episode survival with low variance, demonstrating that the environment rewards coordinated antibiotic timing, fluid, and vasopressor management. PPO's slightly lower mean than the heuristic suggests that with 500K timesteps the policy has not yet fully converged; the heuristic encodes clinical guidelines that are near-optimal for this reward structure.
+\paragraph{SepsisManagement-v0.} The multi-action environment shows the clearest separation between agent quality. Random actions produce high variance ($\sigma = 34.5$) with frequent early termination (mean episode length 64.2 vs.\ 72 maximum), indicating inconsistent patient survival. Both heuristic ($61.2 \pm 2.3$) and PPO ($59.8 \pm 1.8$) achieve full episode survival with low variance, demonstrating that the environment rewards coordinated antibiotic timing, fluid, and vasopressor management. PPO's slightly lower mean than the heuristic suggests that with 500K timesteps the policy has not yet fully converged; the heuristic encodes clinical guidelines that are near-optimal for this reward structure.
 
 % ============================================================
 \section{Discussion and Limitations}
@@ -228,7 +228,7 @@ The observation space assumes complete state observability; real ICU monitoring 
 % ============================================================
 \section{Conclusion and Future Work}
 
-SepsiSim provides the first suite of Gymnasium-compatible, continuous-state reinforcement learning environments for sepsis management built on ODE-based physiological models. The three environments---fluid resuscitation, vasopressor titration, and combined management---offer graduated complexity suitable for curriculum learning research. PPO baselines demonstrate that the environments produce learnable reward signals, and the three difficulty tiers enable systematic benchmarking.
+SepsiSim provides the first suite of Gymnasium-compatible, continuous-state reinforcement learning environments for sepsis management built on ODE-based physiological models. The three environments---fluid resuscitation, vasopressor titration, and combined management---offer graduated complexity suitable for curriculum learning research. PPO baselines demonstrate learnable reward signals on VasopressorTitration (10.6\% improvement over random with lowest variance), while FluidResuscitation and SepsisManagement remain open challenges where PPO underperforms guideline-based heuristics. The three difficulty tiers enable systematic benchmarking.
 
 Future directions include: (1) partial observability extensions with realistic measurement models, (2) multi-patient ward management environments, (3) integration with larger physiological engines (BioGears), (4) offline RL benchmarks using generated trajectories, and (5) validation against MIMIC-III sepsis cohort trajectories.
 

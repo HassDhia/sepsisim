@@ -10,7 +10,7 @@ def evaluate_agent(
     agent,
     env: gym.Env,
     n_episodes: int = 50,
-    seed_offset: int = 1000,
+    seed_offset: int = 0,
 ) -> dict:
     """Evaluate an agent on an environment.
 
