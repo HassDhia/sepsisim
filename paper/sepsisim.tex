@@ -26,7 +26,7 @@ Smart Technology Investments Research Institute\\
 
 % ============================================================
 \begin{abstract}
-Sepsis remains the leading cause of in-hospital mortality worldwide, with treatment decisions requiring rapid, sequential interventions under physiological uncertainty. Despite growing interest in reinforcement learning (RL) for clinical decision support, no open-source Gymnasium-compatible environments provide continuous-state, ODE-based sepsis simulation for algorithm development. SepsiSim addresses this gap by providing three Gymnasium environments---FluidResuscitation-v0, VasopressorTitration-v0, and SepsisManagement-v0---built on established physiological models including Reynolds et al. (2006) inflammation dynamics, lumped-parameter cardiovascular response, and single-compartment lactate kinetics. Each environment supports three difficulty tiers (easy/medium/hard) via initial bacterial load, enabling curriculum learning and systematic benchmarking. In experiments with Proximal Policy Optimization (PPO), the environments produce differentiated reward signals that distinguish agent quality, with PPO outperforming baselines on vasopressor titration and achieving competitive results on combined sepsis management, demonstrating suitability for RL algorithm development. SepsiSim is available as \texttt{pip install sepsisim} and at \url{https://github.com/HassDhia/sepsisim}.
+Sepsis is among the leading causes of in-hospital mortality worldwide, with treatment decisions requiring rapid, sequential interventions under physiological uncertainty. Despite growing interest in reinforcement learning (RL) for clinical decision support, no open-source Gymnasium-compatible environments provide continuous-state, ODE-based sepsis simulation for algorithm development. SepsiSim addresses this gap by providing three Gymnasium environments---FluidResuscitation-v0, VasopressorTitration-v0, and SepsisManagement-v0---built on established physiological models including Reynolds et al. (2006) inflammation dynamics, lumped-parameter cardiovascular response, and single-compartment lactate kinetics. Each environment supports three difficulty tiers (easy/medium/hard) via initial bacterial load, enabling curriculum learning and systematic benchmarking. In experiments with Proximal Policy Optimization (PPO), the environments produce differentiated reward signals that distinguish agent quality, with PPO outperforming baselines on vasopressor titration and achieving competitive results on combined sepsis management, demonstrating suitability for RL algorithm development. SepsiSim is available as \texttt{pip install sepsisim} and at \url{https://github.com/HassDhia/sepsisim}.
 \end{abstract}
 
 % ============================================================
@@ -85,7 +85,7 @@ A lumped-parameter model computes mean arterial pressure (MAP) from tissue damag
     \text{MAP} = \text{MAP}_0 - 0.3 \cdot \text{MAP}_0 \cdot D + G_f \cdot V \cdot \frac{1}{1 + 0.3V} + G_v \cdot d_v \cdot \frac{1}{1 + 0.05 d_v}
 \end{equation}
 
-where $G_f = 8.0$ mmHg/L is the fluid MAP gain (calibrated against the CLOVERS trial \citep{shapiro2023clovers}), $V$ is intravascular volume excess, and $d_v$ is vasopressor dose. The fluid saturation term $1/(1+0.3V)$ models the Frank-Starling plateau. Volume dynamics include redistribution at rate 0.15/h.
+where $G_f = 8.0$ mmHg/L is the fluid MAP gain (informed by fluid response ranges reported in the CLOVERS trial \citep{shapiro2023clovers}), $V$ is intravascular volume excess, and $d_v$ is vasopressor dose. The fluid saturation term $1/(1+0.3V)$ models the Frank-Starling plateau. Volume dynamics include redistribution at rate 0.15/h.
 
 \subsection{Lactate Kinetics}
 
@@ -99,7 +99,7 @@ where $h(MAP) = \max(0, 1 - MAP/MAP_{\text{thresh}})$ represents hypoperfusion, 
 
 \subsection{SOFA Scoring}
 
-A simplified 3-component Sequential Organ Failure Assessment (SOFA) score \citep{vincent1996sofa} uses cardiovascular (MAP and vasopressor dose), renal (urine output), and metabolic (lactate) components, each scored 0--4 for a total range of 0--12.
+A modified 3-component organ failure score inspired by SOFA \citep{vincent1996sofa} uses cardiovascular (MAP and vasopressor dose), renal (urine output), and metabolic (lactate) components, each scored 0--4 for a total range of 0--12. Note that the standard SOFA score uses 6 organ systems (including respiratory, coagulation, and hepatic via bilirubin) and does not include lactate as a subscale; our metabolic component substitutes lactate for bilirubin given its direct relevance to sepsis resuscitation targets.
 
 % ============================================================
 \section{Environment Design}
@@ -223,7 +223,7 @@ The reward functions encode clinical goals but may have exploitable features. Fo
 No. SepsiSim is a benchmark environment for algorithm development, not a clinical decision support tool. The sim-to-real gap is substantial: simplified ODE dynamics, idealized observations without measurement noise or missingness, and reward functions that approximate but do not capture the full clinical objective \citep{gottesman2019guidelines}. Policies should be validated on retrospective clinical data (e.g., MIMIC-III \citep{johnson2016mimic}) before any consideration of clinical deployment.
 
 \paragraph{Additional Limitations.}
-The observation space assumes complete state observability; real ICU monitoring involves irregular sampling, delayed lab results, and sensor artifacts. The 1-hour timestep is coarser than real-time clinical decision-making. The SOFA score uses 3 of 6 components. Future work could address these through partial observability (POMDP formulation), irregular time steps, and expanded organ system models.
+The observation space assumes complete state observability; real ICU monitoring involves irregular sampling, delayed lab results, and sensor artifacts. The 1-hour timestep is coarser than real-time clinical decision-making. The modified SOFA score uses 3 of 6 components with lactate substituted for bilirubin. The fluid redistribution rate (0.15/h, half-life $\approx$4.6h) is slower than physiological crystalloid redistribution ($\sim$20--40 minutes), and the vasopressor dose increment ($\pm$0.1 mcg/kg/min per step) is larger than typical clinical titration steps (0.01--0.05 mcg/kg/min). These simplifications are deliberate for RL tractability but would need refinement for clinical fidelity. Future work could address these through partial observability (POMDP formulation), irregular time steps, and expanded organ system models.
 
 % ============================================================
 \section{Conclusion and Future Work}
