@@ -158,7 +158,7 @@ We evaluate three agent types:
 
 \begin{itemize}
     \item \textbf{Random}: Uniformly samples from the action space.
-    \item \textbf{Heuristic}: Implements SSC guidelines---750 mL fluid if MAP $< 65$, graded response for higher MAP, volume-aware cutoff at 3.5L. For the management environment, gives antibiotics immediately and escalates vasopressors for refractory hypotension.
+    \item \textbf{Heuristic}: Implements SSC guidelines---750 mL fluid if MAP $< 65$ mmHg, graded response for higher MAP, volume-aware cutoff at 3.5L. For the management environment, gives antibiotics immediately and escalates vasopressors for refractory hypotension.
     \item \textbf{PPO}: Proximal Policy Optimization \citep{schulman2017proximal} via Stable-Baselines3 \citep{raffin2021stable} with MlpPolicy.
 \end{itemize}
 
@@ -204,7 +204,7 @@ PPO        & $-71.5 \pm 8.6$ & $\mathbf{-36.9 \pm 0.9}$ & $59.8 \pm 1.8$ \\
 \end{tabular}
 \end{table}
 
-\paragraph{FluidResuscitation-v0.} In this environment, antibiotics dominate patient outcomes---once the infection is suppressed, MAP recovers with minimal fluid intervention. Both random and heuristic agents achieve similar high rewards because the environment provides antibiotics by default, making fluid dosing a secondary factor. PPO's negative reward indicates that with 200K timesteps, the policy overfits to aggressive fluid administration, incurring overload penalties. This highlights the environment's value as a benchmark: naive reward maximization does not suffice when penalty terms are present. Longer training horizons or curriculum strategies may resolve this.
+\paragraph{FluidResuscitation-v0.} In this environment, antibiotics dominate patient outcomes---once the infection is suppressed, MAP recovers with minimal fluid intervention. Both random and heuristic agents achieve similar high rewards because the environment provides antibiotics by default, making fluid dosing a secondary factor. PPO's negative reward indicates that with 200K timesteps, the policy converges to an overly aggressive fluid administration strategy, incurring overload penalties. This highlights the environment's value as a benchmark: naive reward maximization does not suffice when penalty terms are present. Longer training horizons or curriculum strategies may resolve this.
 
 \paragraph{VasopressorTitration-v0.} PPO achieves the best performance ($-36.9 \pm 0.9$), outperforming both random ($-41.3$) and heuristic ($-41.0$) baselines with substantially lower variance. The learned policy applies conservative dose increments that maintain MAP in the target range without accumulating ischemia penalties.
 
