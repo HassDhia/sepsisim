@@ -17,7 +17,9 @@ class RandomAgent:
     def predict(
         self, obs: NDArray[np.float32], deterministic: bool = False
     ) -> tuple[NDArray[np.float32], None]:
-        action = self.env.action_space.sample()
+        low = self.env.action_space.low
+        high = self.env.action_space.high
+        action = self.rng.uniform(low, high).astype(np.float32)
         return action, None
 
     def evaluate(self, n_episodes: int = 50) -> dict:

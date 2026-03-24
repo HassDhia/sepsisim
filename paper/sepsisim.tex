@@ -85,7 +85,7 @@ A lumped-parameter model computes mean arterial pressure (MAP) from tissue damag
     \text{MAP} = \text{MAP}_0 - 0.3 \cdot \text{MAP}_0 \cdot D + G_f \cdot V \cdot \frac{1}{1 + 0.3V} + G_v \cdot d_v \cdot \frac{1}{1 + 0.05 d_v}
 \end{equation}
 
-where $G_f = 8.0$ mmHg/L is the fluid MAP gain (informed by fluid response ranges reported in the CLOVERS trial \citep{shapiro2023clovers}), $V$ is intravascular volume excess, and $d_v$ is vasopressor dose. The fluid saturation term $1/(1+0.3V)$ models the Frank-Starling plateau. Volume dynamics include redistribution at rate 0.15/h.
+where $G_f = 8.0$ mmHg/L is the fluid MAP gain (informed by fluid response ranges reported in the CLOVERS trial \citep{shapiro2023clovers}), $G_v = 15.0$ mmHg/(mcg/kg/min) is the vasopressor MAP gain, $V$ is intravascular volume excess, and $d_v$ is vasopressor dose. The fluid saturation term $1/(1+0.3V)$ models the Frank-Starling plateau. Volume dynamics include redistribution at rate 0.15/h.
 
 \subsection{Lactate Kinetics}
 
@@ -135,13 +135,13 @@ The most challenging environment requires simultaneous management of fluids, vas
 
 \subsection{Difficulty Tiers}
 
-Each environment supports three difficulty tiers controlled by initial bacterial load: easy (0.2), medium (0.4--0.45), and hard (0.6--0.65). Higher bacterial loads produce more severe inflammatory cascades, requiring more aggressive intervention. This enables curriculum learning: agents can train on easy scenarios before progressing to harder ones.
+Each environment supports three difficulty tiers controlled by initial bacterial load. FluidResuscitation uses 0.2/0.4/0.6 for easy/medium/hard; VasopressorTitration and SepsisManagement use slightly higher values of 0.25/0.45/0.65 to produce clinically severe initial presentations requiring active vasopressor management. Higher bacterial loads produce more severe inflammatory cascades, requiring more aggressive intervention. This enables curriculum learning: agents can train on easy scenarios before progressing to harder ones.
 
 % ============================================================
 \section{Signal and Physics Models}
 
 \paragraph{Parameter Calibration.}
-Model parameters were calibrated against published ranges from clinical literature. The inflammation ODE parameters follow Reynolds et al. \citep{reynolds2006reduced} with time constants adjusted for the hourly RL timestep. Cardiovascular parameters reference the CLOVERS trial \citep{shapiro2023clovers} and SSC guidelines \citep{rhodes2017surviving}. Lactate kinetics reference Hernandez et al. \citep{hernandez2019lactate} and Bakker et al. \citep{bakker2022lactate}.
+Model parameters were calibrated against published ranges from clinical literature. The inflammation ODE parameters follow Reynolds et al. \citep{reynolds2006reduced} with time constants adjusted for the hourly RL timestep. Cardiovascular parameters reference the CLOVERS trial \citep{shapiro2023clovers} and SSC guidelines \citep{rhodes2017surviving}. Lactate kinetics reference Hernandez et al. \citep{hernandez2020lactate} and Bakker et al. \citep{bakker2022lactate}.
 
 \paragraph{Simplifications.}
 Several physiological simplifications were made for computational tractability and RL suitability. The inflammation model uses lumped pro-/anti-inflammatory variables rather than individual cytokine species (clinical models track 10+ cytokines). The cardiovascular model uses a single lumped parameter rather than a multi-chamber Windkessel circuit. The lactate model uses a single compartment rather than organ-specific production and clearance. SOFA uses 3 of 6 clinical components. These simplifications are documented in the source code and are appropriate for a benchmark simulation environment.
@@ -158,7 +158,7 @@ We evaluate three agent types:
 
 \begin{itemize}
     \item \textbf{Random}: Uniformly samples from the action space.
-    \item \textbf{Heuristic}: Implements SSC guidelines---750 mL fluid if MAP $< 65$ mmHg, graded response for higher MAP, volume-aware cutoff at 3.5L. For the management environment, gives antibiotics immediately and escalates vasopressors for refractory hypotension.
+    \item \textbf{Heuristic}: Implements SSC guidelines---750 mL fluid if MAP $< 65$ mmHg, 500 mL for 65--70, 250 mL for 70--80, 125 mL baseline above 80, with volume-aware cutoff at 3.5L. For the management environment, gives antibiotics immediately and escalates vasopressors for refractory hypotension.
     \item \textbf{PPO}: Proximal Policy Optimization \citep{schulman2017proximal} via Stable-Baselines3 \citep{raffin2021stable} with MlpPolicy.
 \end{itemize}
 
